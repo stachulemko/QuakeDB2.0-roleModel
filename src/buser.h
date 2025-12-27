@@ -2,10 +2,11 @@
 #define BUSER_H
 
 #include <iostream>
-#include <openssl/sha.h>
+//#include <openssl/sha.h>
 #include <iomanip>
 #include <sstream>
 #include <string>
+//#include "../../bufforing-stm/src/buserCache.h"
 
 
 /*
@@ -20,6 +21,14 @@ inline std::string sha256(const std::string& password) {
     return ss.str();
 }
 */
+
+
+inline int64_t id = 0;
+
+inline int64_t getNextUserId(){
+    id++;
+    return id;
+}
 
 class buser{
     private:
