@@ -1,9 +1,11 @@
 #include <iostream>
 #include "threadPoolRole.h"
 
-Session::Session(int ttl)
+
+Session::Session(int ttl,int64_t xactionId)
 {
     this->ttl = ttl;
+    this->xactionId = xactionId;
     //check user credentials
     pthread_mutex_init(&m, nullptr);
     pthread_cond_init(&cv, nullptr);
@@ -18,13 +20,13 @@ Session::~Session() {
 
 void Session::start(std::string username, std::string passwd) {
     if(!checkUser(username, passwd)){
-        std::cerr << "Session start failed: invalid user credentials\n";
+        LOG_ERROR("Session start failed: invalid user credentials");
         return;
     }
     else{
         userId = getUserIdFromCache(username,passwd);
         stopping.store(false);
-        pthread_create(&thread, nullptr, &Session::thread_entry, this);
+        threadId = pthread_create(&thread, nullptr, &Session::thread_entry, this);
     }
     
 }
@@ -32,6 +34,7 @@ void Session::start(std::string username, std::string passwd) {
 void Session::submit(Task t,int32_t userIp) {
     pthread_mutex_lock(&m);
     t.userIp = userIp;
+    LOG_DEBUG("Submitting task to session for user ID "<<userId);
     q.push(t);
     pthread_cond_signal(&cv);
     pthread_mutex_unlock(&m);
@@ -44,6 +47,13 @@ void Session::stop() {
         pthread_mutex_unlock(&m);
         pthread_join(thread, nullptr);
     }
+    
+    /*
+    pthread_mutex_lock(&m);
+    pthread_cond_signal(&cv);
+    pthread_mutex_unlock(&m);
+    pthread_join(thread, nullptr);
+    */
 }
 
 void* Session::thread_entry(void* arg) {
@@ -61,7 +71,7 @@ bool Session::checkUser(std::string username, std::string passwd){
             return true;
         }
     }
-    std::cerr << "Authentication failed for user: " << username << "\n";
+    LOG_ERROR("Authentication failed for user: " << username);
     
     
     pthread_mutex_unlock(&m);
@@ -117,8 +127,11 @@ void Session::run() {
         while (q.empty() && !stopping.load()) {
             int rc = pthread_cond_timedwait(&cv, &m, &end);
 
-            if (rc == ETIMEDOUT) {
-                std::cout<<"asasdadasddasdsada"<<std::endl;
+
+            timespec now;
+            clock_gettime(CLOCK_MONOTONIC, &now);
+            if (now.tv_sec >=end.tv_sec) {
+                LOG_DEBUG("Session TTL expired for user ID "<<userId);
                 stopping.store(true);
                 //removeProcessFromBuffer(this);  // Usuń z bufora po upływie TTL
                 break;
@@ -127,7 +140,7 @@ void Session::run() {
 
         if (stopping.load() && q.empty()) {
             pthread_mutex_unlock(&m);
-            std::cout<<"asdadsdasdadadad"<<std::endl;
+            LOG_DEBUG("EXIT SESSION for user ID "<<userId);
             break;
         }
 
@@ -137,7 +150,19 @@ void Session::run() {
 
         if (t.user != nullptr) {
             addUserToCache(t.user);
-            std::cout << "User was created " << t.user->getUsername() << "\n";
+            LOG_INFO("User was created " << t.user->getUsername());
+            LOG_DEBUG("User was created " << t.user->getUsername());
+
+        }
+        else if(t.tupleData != nullptr){
+            addTupleToBuffer(t.tupleData->pathToTablesData, t.tupleData->tableId, t.tupleData->data, t.tupleData->bitmap,xactionId);
+            LOG_DEBUG("Tuple was added to table ID " << t.tupleData->tableId);
+            LOG_INFO("Tuple was added to table ID " << t.tupleData->tableId);
+        }
+        else if(t.tableHeaderData != nullptr){
+            LOG_DEBUG("Table header added for table ID "<<t.tableHeaderData->tableId);
+            LOG_INFO("Table header added for table ID "<<t.tableHeaderData->tableId);
+            addTableToBuffer("data/tablesData/", t.tableHeaderData->tableId, t.tableHeaderData->tableHeaderData);
         }
         //t.promise.set_value();  // Sygnalizuj zakończenie zadania
     }
@@ -149,6 +174,12 @@ void Session::addBuser(buser* user){
     task.user=user;
     submit(task, -1);
 
+}
+
+void Session::addTable(tableHeaderAdd* tableHeaderData){
+    Task task;
+    task.tableHeaderData = tableHeaderData;
+    submit(task, -1);
 }
 
 

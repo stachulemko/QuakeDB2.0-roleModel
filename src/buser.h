@@ -2,6 +2,7 @@
 #define BUSER_H
 
 #include <iostream>
+#include <pthread.h>
 //#include <openssl/sha.h>
 #include <iomanip>
 #include <sstream>
@@ -24,10 +25,14 @@ inline std::string sha256(const std::string& password) {
 
 
 inline int64_t id = 0;
+inline pthread_mutex_t idMutex = PTHREAD_MUTEX_INITIALIZER;
 
 inline int64_t getNextUserId(){
+    pthread_mutex_lock(&idMutex);
     id++;
-    return id;
+    int64_t result = id;
+    pthread_mutex_unlock(&idMutex);
+    return result;
 }
 
 class buser{

@@ -8,7 +8,7 @@
 int main(){
     // Example usage
     std::cout<<"t123est"<<std::endl;
-    startSession("adminQkDB", "Quake17",3600);
+    //int32_t threadId = startSession("adminQkDB", "Quake17",3600);
     addBuser("newUser", "newPassword","stachulemko@o2.pl",false,"adminQkDB","Quake17");
     waitForAllProcessesToFinish();
     // Teraz addBuser czeka na zakończenie zadania

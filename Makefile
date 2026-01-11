@@ -3,23 +3,35 @@
 # Compiler and flags
 CC = gcc
 CXX = g++
-CFLAGS = -Wall -Wextra -O2 -std=c11
-CXXFLAGS = -Wall -Wextra -O2 -std=c++17
+CFLAGS = -Wall -Wextra -O2 -std=c11 -I$(SRC_DIR) -I$(BUFF_DIR) -I$(MEM_DIR) -I$(CORE_DIR)
+CXXFLAGS = -Wall -Wextra -O2 -std=c++17 -I$(SRC_DIR) -I$(BUFF_DIR) -I$(MEM_DIR) -I$(CORE_DIR)
 LDFLAGS = 
+TEST_LDFLAGS = -lgtest -lgtest_main -pthread
 
 # Directories
 SRC_DIR = src
 BUILD_DIR = build
 BIN_DIR = bin
 TEST_DIR = test
+BUFF_DIR = ../bufforing-stm/src
+MEM_DIR = ../memory-mgmt/src
+CORE_DIR = ../../src
 
 # Target executable
 TARGET = $(BIN_DIR)/quakedb
 
 # Source files
 SOURCES = $(wildcard $(SRC_DIR)/*.c $(SRC_DIR)/*.cpp)
+# pull in buffer/memory sources so real addTupleToBuffer is linked
+BUFF_SOURCES = $(filter-out $(BUFF_DIR)/main.cpp,$(wildcard $(BUFF_DIR)/*.cpp))
+MEM_SOURCES = $(filter-out $(MEM_DIR)/main.cpp,$(wildcard $(MEM_DIR)/*.cpp))
+# only bring in the core pieces we actually need from the top-level project
+CORE_SOURCES = $(CORE_DIR)/insert.cpp
 OBJECTS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(filter %.c,$(SOURCES))) \
-          $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(filter %.cpp,$(SOURCES)))
+          $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(filter %.cpp,$(SOURCES))) \
+          $(patsubst $(BUFF_DIR)/%.cpp,$(BUILD_DIR)/buff_%.o,$(filter %.cpp,$(BUFF_SOURCES))) \
+		  $(patsubst $(MEM_DIR)/%.cpp,$(BUILD_DIR)/mem_%.o,$(filter %.cpp,$(MEM_SOURCES))) \
+		  $(patsubst $(CORE_DIR)/%.cpp,$(BUILD_DIR)/core_%.o,$(filter %.cpp,$(CORE_SOURCES)))
 
 # Test files
 TEST_SOURCES = $(wildcard $(TEST_DIR)/*.c $(TEST_DIR)/*.cpp)
@@ -44,6 +56,13 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+$(BUILD_DIR)/buff_%.o: $(BUFF_DIR)/%.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Compile core (top-level) source files we depend on
+$(BUILD_DIR)/core_%.o: $(CORE_DIR)/%.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
 # Compile test C source files
 $(BUILD_DIR)/test_%.o: $(TEST_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -52,14 +71,18 @@ $(BUILD_DIR)/test_%.o: $(TEST_DIR)/%.c | $(BUILD_DIR)
 $(BUILD_DIR)/test_%.o: $(TEST_DIR)/%.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+# Compile memory-mgmt source files
+$(BUILD_DIR)/mem_%.o: $(MEM_DIR)/%.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
 # Build tests
 .PHONY: test
 test: $(TEST_TARGET)
 	@echo "Running tests..."
 	@$(TEST_TARGET)
 
-$(TEST_TARGET): $(TEST_OBJECTS) $(filter-out $(BUILD_DIR)/main.o,$(OBJECTS)) | $(BIN_DIR)
-	$(CXX) $(TEST_OBJECTS) $(filter-out $(BUILD_DIR)/main.o,$(OBJECTS)) -o $@ $(LDFLAGS)
+$(TEST_TARGET): $(TEST_OBJECTS) $(filter-out %main.o,$(OBJECTS)) | $(BIN_DIR)
+	$(CXX) $(TEST_OBJECTS) $(filter-out %main.o,$(OBJECTS)) -o $@ $(LDFLAGS) $(TEST_LDFLAGS)
 
 # Create directories
 $(BUILD_DIR):
