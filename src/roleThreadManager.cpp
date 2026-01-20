@@ -1,8 +1,8 @@
 #include "roleThreadManager.h"
 
-std::pair<int32_t,Session*> startSession(std::string username, std::string passwd,int32_t ttl,int64_t xactionId){
+std::pair<int32_t,Session*> startSession(std::string username, std::string passwd,int32_t ttl,int64_t xactionId,std::string tablePath){
 	Session* session = new Session(ttl, xactionId);
-	session->start(username, passwd);  // start() uruchamia wątek i run()
+	session->start(username, passwd,tablePath);  // start() uruchamia wątek i run()
 	addProcessToBuffer(session);
 	return {session->getThreadId(), session};
 }
@@ -40,6 +40,7 @@ void addTuple(std::string pathToTablesData, int32_t tableId, std::vector<allVars
 			return;
 		}
 	}
+	LOG_ERROR("No session found for user "<<sessionUsername<<"\n");
 }
 void waitForAllProcessesToFinish(){
 	pthread_mutex_lock(&processBufferMutex);
@@ -61,7 +62,11 @@ void addTable(std::string sessionUsername, std::string sessionPasswd,std::vector
 			Session* session = processBuffer[i];
 			tableHeaderAdd* tableAddPtr = new tableHeaderAdd();
 			tableHeader* tableHeaderPtr = new tableHeader();
-			tableHeaderPtr->setData(getTransactionAndIncrement(),-1,-1,0,static_cast<int32_t>(columnNames.size()),session->getUserId(),0,0,0,0,types,typesWithAllowNull,columnNames);
+			pthread_mutex_lock(&processBufferMutex);
+			int64_t transactionId = getTransactionAndIncrement();
+			pthread_mutex_unlock(&processBufferMutex);
+			LOG_DEBUG("transactionId for table header: "<<transactionId<<"\n");
+			tableHeaderPtr->setData(transactionId,-1,-1,0,static_cast<int32_t>(columnNames.size()),session->getUserId(),0,0,0,0,types,typesWithAllowNull,columnNames);
 			tableAddPtr->tableHeaderData = new tableHeader();
 			tableAddPtr->tableHeaderData = tableHeaderPtr;
 			//tableAddPtr->tableHeaderData->setData(getTransactionAndIncrement(),-1,-1,0,static_cast<int32_t>(columnNames.size()),session->getUserId(),0,0,0,0,types,typesWithAllowNull,columnNames);
@@ -72,4 +77,5 @@ void addTable(std::string sessionUsername, std::string sessionPasswd,std::vector
 			return;
 		}
 	}
+	LOG_ERROR("No session found for user "<<sessionUsername<<"\n");
 }

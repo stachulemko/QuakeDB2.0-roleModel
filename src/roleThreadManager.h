@@ -5,7 +5,7 @@
 #include "../../bufforing-stm/src/buserProcess.h"
 #include "../../bufforing-stm/src/mvcc.h"
 
-std::pair<int32_t,Session*> startSession(std::string username, std::string passwd,int32_t ttl,int64_t xactionId);
+std::pair<int32_t,Session*> startSession(std::string username, std::string passwd,int32_t ttl,int64_t xactionId,std::string tablePath);
 
 void addBuser(std::string newUsername, std::string newPasswd, std::string newEmail, bool useHashing, std::string sessionUsername, std::string sessionPasswd);
 

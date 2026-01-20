@@ -37,7 +37,7 @@ public:
     explicit Session(int ttl,int64_t xactionId);
     ~Session();
     
-    void start(std::string username, std::string passwd);
+    void start(std::string username, std::string passwd,std::string tablePath);
     void submit(Task t,int32_t userIp);
     void stop();
     void addBuser(buser* user);
@@ -60,6 +60,7 @@ private:
     int64_t userId=-1;
     int32_t ttl=3600; //time to live in seconds
     int64_t xactionId=-1;
+    std::string tablePath="";
 
     std::queue<Task> q;
     std::atomic<bool> stopping{false};

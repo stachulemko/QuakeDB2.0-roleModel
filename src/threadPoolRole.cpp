@@ -18,7 +18,8 @@ Session::~Session() {
     pthread_cond_destroy(&cv);
 }
 
-void Session::start(std::string username, std::string passwd) {
+void Session::start(std::string username, std::string passwd,std::string tablePath) {
+    this->tablePath = tablePath;
     if(!checkUser(username, passwd)){
         LOG_ERROR("Session start failed: invalid user credentials");
         return;
@@ -162,30 +163,20 @@ void Session::run() {
         else if(t.tableHeaderData != nullptr){
             LOG_DEBUG("Table header added for table ID "<<t.tableHeaderData->tableId);
             LOG_INFO("Table header added for table ID "<<t.tableHeaderData->tableId);
-            addTableToBuffer("data/tablesData/", t.tableHeaderData->tableId, t.tableHeaderData->tableHeaderData);
+            addTableToBuffer(tablePath, t.tableHeaderData->tableId, t.tableHeaderData->tableHeaderData);
         }
         //t.promise.set_value();  // Sygnalizuj zakończenie zadania
     }
 }
-
-
 void Session::addBuser(buser* user){
     Task task;
     task.user=user;
     submit(task, -1);
 
 }
-
 void Session::addTable(tableHeaderAdd* tableHeaderData){
     Task task;
     task.tableHeaderData = tableHeaderData;
     submit(task, -1);
 }
-
-
-
-
 //
-
-
-
