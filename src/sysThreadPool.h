@@ -127,6 +127,7 @@ class SysThreadPool {
                     }
                 }
                 LOG_DEBUG("Evicting buffer at index " << indexToDelete);
+                addBufferDataToFile((*cachePtr)[indexToDelete]);
                 (*cachePtr)[indexToDelete] = nullptr;
                 addToFreeSlot(elementToAdd);
             }
