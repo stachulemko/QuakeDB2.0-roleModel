@@ -19,6 +19,7 @@ class SysThreadPool {
         int32_t threadId=-1;
         bool cacheHintFlag = false;
         bool stopping = false;
+        bool evictionDone = false;
         int32_t blockIndex = -1;
         Cache* cachePtr=nullptr;
         VectorType cacheEl = nullptr;
@@ -101,8 +102,6 @@ class SysThreadPool {
         */
         
 
-
-
         void run() {
             pthread_mutex_lock(&m);
             while (!stopping) {
@@ -130,6 +129,8 @@ class SysThreadPool {
                 addBufferDataToFile((*cachePtr)[indexToDelete]);
                 (*cachePtr)[indexToDelete] = nullptr;
                 addToFreeSlot(elementToAdd);
+                evictionDone = true;
+                pthread_cond_broadcast(&cv);
             }
             pthread_mutex_unlock(&m);
         }
@@ -150,16 +151,21 @@ class SysThreadPool {
         }
         void cacheHint(VectorType elementToAdd){
             if(isFull()){
+                LOG_DEBUG("Cache full, signaling SysThreadPool to evict an element");
                 this->elementToAdd = elementToAdd;
                 cacheHintFlag = true;
+                evictionDone = false;
                 pthread_cond_signal(&cv);
+                while (!evictionDone) {
+                    pthread_cond_wait(&cv, &m);
+                }
             }
             else{
                 LOG_DEBUG("Cache not full, adding element directly without eviction");
                 addToFreeSlot(elementToAdd);
             }
+            
         }
-
 };
 
 #endif
