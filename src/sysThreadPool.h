@@ -150,6 +150,7 @@ class SysThreadPool {
             return true;
         }
         void cacheHint(VectorType elementToAdd){
+            pthread_mutex_lock(&m);
             if(isFull()){
                 LOG_DEBUG("Cache full, signaling SysThreadPool to evict an element");
                 this->elementToAdd = elementToAdd;
@@ -157,6 +158,7 @@ class SysThreadPool {
                 evictionDone = false;
                 pthread_cond_signal(&cv);
                 while (!evictionDone) {
+                    // Wait until eviction thread finishes and signals
                     pthread_cond_wait(&cv, &m);
                 }
             }
@@ -164,6 +166,7 @@ class SysThreadPool {
                 LOG_DEBUG("Cache not full, adding element directly without eviction");
                 addToFreeSlot(elementToAdd);
             }
+            pthread_mutex_unlock(&m);
             
         }
 };

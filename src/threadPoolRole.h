@@ -46,6 +46,7 @@ public:
     void run();
     int64_t getUserId(){return userId; };
     int32_t getThreadId(){return threadId; };
+    void setXactionId(int64_t xactionId){ this->xactionId = xactionId; }
 
 private:
     static void* thread_entry(void* arg);

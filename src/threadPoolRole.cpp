@@ -18,6 +18,7 @@ Session::~Session() {
     pthread_cond_destroy(&cv);
 }
 
+
 void Session::start(std::string username, std::string passwd,std::string tablePath) {
     this->tablePath = tablePath;
     if(!checkUser(username, passwd)){
@@ -172,10 +173,10 @@ void Session::addBuser(buser* user){
     Task task;
     task.user=user;
     submit(task, -1);
-
 }
 void Session::addTable(tableHeaderAdd* tableHeaderData){
     Task task;
+    tableHeaderData->tableHeaderData->setXmin(xactionId);
     task.tableHeaderData = tableHeaderData;
     submit(task, -1);
 }
